@@ -1,0 +1,75 @@
+/* Stormforged Blade Plugin (Paper 1.21.8)
+
+Features:
+
+Epic Mythic particle/sound effects
+
+Lightning ritual crafting (Lightning Rod + Trident + Blaze Rod)
+
+Right-click lightning ability with 30s cooldown
+
+Player immune to own lightning
+
+JAR + Source Code ready
+
+
+Instructions:
+
+1. Compile the Java source in 'src' folder using Paper 1.21.8 API
+
+
+2. Package into JAR including plugin.yml
+
+
+3. Place JAR in plugins folder
+
+
+4. Restart server */
+
+
+
+package com.example.stormforged;
+
+import org.bukkit.Bukkit; import org.bukkit.Material; import org.bukkit.NamespacedKey; import org.bukkit.Particle; import org.bukkit.Sound; import org.bukkit.block.Block; import org.bukkit.entity.Entity; import org.bukkit.entity.Item; import org.bukkit.entity.Player; import org.bukkit.event.EventHandler; import org.bukkit.event.Listener; import org.bukkit.event.block.Action; import org.bukkit.event.entity.LightningStrikeEvent; import org.bukkit.event.player.PlayerInteractEvent; import org.bukkit.inventory.ItemStack; import org.bukkit.inventory.meta.ItemMeta; import org.bukkit.plugin.java.JavaPlugin; import org.bukkit.persistence.PersistentDataType; import org.bukkit.scheduler.BukkitRunnable;
+
+import java.util.HashMap; import java.util.Map;
+
+public class StormforgedBlade extends JavaPlugin implements Listener { private NamespacedKey key; private Map<Player, Long> cooldowns = new HashMap<>();
+
+@Override
+public void onEnable() {
+    key = new NamespacedKey(this, "stormforged");
+    Bukkit.getPluginManager().registerEvents(this, this);
+}
+
+// Ritual crafting
+@EventHandler
+public void onLightningStrike(LightningStrikeEvent event) {
+    var loc = event.getLightning().getLocation();
+    var world = loc.getWorld();
+    var items = world.getNearbyEntities(loc, 2, 2, 2, e -> e instanceof Item);
+    int rod=0, tri=0, blaze=0;
+    for (Entity ent : items) {
+        Item item = (Item) ent;
+        ItemStack stack = item.getItemStack();
+        if (stack.getType() == Material.LIGHTNING_ROD) rod += stack.getAmount();
+        if (stack.getType() == Material.TRIDENT) tri += stack.getAmount();
+        if (stack.getType() == Material.BLAZE_ROD) blaze += stack.getAmount();
+    }
+    if (rod>0 && tri>0 && blaze>0) {
+        for (Entity ent : items) ent.remove();
+        ItemStack sword = new ItemStack(Material.DIAMOND_SWORD);
+        ItemMeta meta = sword.getItemMeta();
+        meta.setDisplayName("§bStormforged Blade");
+        meta.getPersistentDataContainer().set(key, PersistentDataType.BYTE, (byte)1);
+        sword.setItemMeta(meta);
+        world.dropItem(loc, sword);
+        world.spawnParticle(Particle.ELECTRIC_SPARK, loc, 30, 1,1,1,0.2);
+        world.playSound(loc, Sound.ENTITY_LIGHTNING_BOLT_THUNDER, 2f,1f);
+    }
+}
+
+// Ability
+@EventHandler
+public void onPlayerUse(PlayerInteractEvent event) {
+    Player player = event.getPlayer();
